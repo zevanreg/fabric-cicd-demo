@@ -1,0 +1,24 @@
+name: Promote wheel workloads on main
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/wheel-workloads/**'
+      - '.github/workflows/wheel-*.yml'
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  test:
+    uses: ./.github/workflows/wheel-deploy.yml
+    with:
+      stage: test
+    secrets:
+      GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
+  prod:
+    needs: test
+    uses: ./.github/workflows/wheel-deploy.yml
+    with:
+      stage: prod
+    secrets:
+      GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}

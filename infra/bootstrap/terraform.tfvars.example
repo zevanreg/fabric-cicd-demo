@@ -1,0 +1,8 @@
+subscription_id                     = "00000000-0000-0000-0000-000000000000"
+storage_account_name                = "YOUR_UNIQUE_LOWERCASE_NAME"
+resource_group_name                 = "rg-fabric-date-tfstate"
+location                            = "westeurope"
+github_repository                   = "zevanreg/fabric-cicd-demo"
+deployment_application_display_name = "fabric-cicd-demo-deploy"
+environments                        = ["developer1", "dev", "test", "prod"]
+github_environments                 = ["dev", "test", "prod"]

@@ -1,0 +1,6 @@
+subscription_id  = "00000000-0000-0000-0000-000000000000"
+location         = "westeurope"
+capacity_name    = "fabricdate"
+capacity_sku     = "F2"
+capacity_admins  = ["you@contoso.com"]
+workspace_prefix = "fabric-date"

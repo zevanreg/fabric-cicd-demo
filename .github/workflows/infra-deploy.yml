@@ -1,0 +1,94 @@
+name: Deploy infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      operation:
+        description: Plan changes or apply the generated plan
+        required: true
+        type: choice
+        default: plan
+        options: [plan, apply]
+permissions:
+  contents: read
+  id-token: write
+concurrency:
+  group: fabric-infrastructure
+  cancel-in-progress: false
+defaults:
+  run:
+    working-directory: infra/terraform
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: prod
+    env:
+      AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_OBJECT_ID: ${{ vars.AZURE_CLIENT_OBJECT_ID }}
+      AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+      TFSTATE_RESOURCE_GROUP: ${{ vars.TFSTATE_RESOURCE_GROUP }}
+      TFSTATE_STORAGE_ACCOUNT: ${{ vars.TFSTATE_STORAGE_ACCOUNT }}
+      TF_VAR_capacity_admins: ${{ vars.FABRIC_CAPACITY_ADMINS }}
+      TF_VAR_deployment_application_client_id: ${{ vars.AZURE_CLIENT_ID }}
+      TF_VAR_deployment_service_principal_object_id: ${{ vars.AZURE_CLIENT_OBJECT_ID }}
+      TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "$AZURE_CLIENT_ID" ||
+                -z "$AZURE_CLIENT_OBJECT_ID" ||
+                -z "$AZURE_SUBSCRIPTION_ID" ||
+                -z "$AZURE_TENANT_ID" ||
+                -z "$TFSTATE_RESOURCE_GROUP" ||
+                -z "$TFSTATE_STORAGE_ACCOUNT" ||
+                -z "$TF_VAR_capacity_admins" ]]; then
+            echo "::error::Configure all infrastructure deployment variables documented in README.md."
+            exit 1
+          fi
+          if ! jq -e 'type == "array" and length > 0 and all(.[]; type == "string" and length > 0)' \
+            <<< "$TF_VAR_capacity_admins" > /dev/null; then
+            echo "::error::FABRIC_CAPACITY_ADMINS must be a non-empty JSON array of strings."
+            exit 1
+          fi
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ env.AZURE_CLIENT_ID }}
+          tenant-id: ${{ env.AZURE_TENANT_ID }}
+          subscription-id: ${{ env.AZURE_SUBSCRIPTION_ID }}
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.16.5'
+      - name: Initialize remote state
+        run: |
+          terraform init -input=false -lockfile=readonly \
+            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
+            -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=fabric-infrastructure.tfstate" \
+            -backend-config="subscription_id=$AZURE_SUBSCRIPTION_ID" \
+            -backend-config="tenant_id=$AZURE_TENANT_ID"
+      - name: Validate configuration
+        run: terraform validate
+      - name: Create deployment plan
+        run: terraform plan -input=false -lock-timeout=5m -out=tfplan
+      - name: Apply deployment plan
+        if: inputs.operation == 'apply'
+        run: terraform apply -input=false -lock-timeout=5m tfplan
+      - name: Publish workspace IDs
+        if: inputs.operation == 'apply'
+        shell: bash
+        run: |
+          {
+            echo "## Fabric workspace IDs"
+            echo
+            echo "| Environment | Workspace ID |"
+            echo "| --- | --- |"
+            terraform output -json workspace_ids |
+              jq -r 'to_entries[] | "| `\(.key)` | `\(.value)` |"'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,30 @@
+name: Infrastructure CI
+on:
+  push:
+    paths: ['infra/**', '.github/workflows/infra-ci.yml']
+  pull_request:
+    paths: ['infra/**', '.github/workflows/infra-ci.yml']
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        directory: [bootstrap, terraform]
+    defaults:
+      run:
+        working-directory: infra/${{ matrix.directory }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.16.5'
+      - name: Check formatting
+        run: terraform fmt -check -recursive
+      - name: Initialize providers
+        run: terraform init -backend=false -input=false -lockfile=readonly
+      - name: Validate Terraform
+        run: terraform validate
+      - name: Test configuration with mocked providers
+        run: terraform test

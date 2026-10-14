@@ -1,0 +1,20 @@
+name: Promote inline workloads on main
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/inline-workloads/**'
+      - '.github/workflows/inline-*.yml'
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  test:
+    uses: ./.github/workflows/inline-deploy.yml
+    with:
+      stage: test
+  prod:
+    needs: test
+    uses: ./.github/workflows/inline-deploy.yml
+    with:
+      stage: prod

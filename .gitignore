@@ -1,0 +1,16 @@
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+*.tfplan
+backend.hcl
+crash.log
+
+.venv/
+__pycache__/
+.staging/
+artifacts/
+deployment-manifest.json
+release-info.json
+fabric_cicd*.log

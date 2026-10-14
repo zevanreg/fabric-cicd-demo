@@ -24,6 +24,26 @@ variable "github_repository" {
   }
 }
 
+variable "github_owner_id" {
+  description = "Immutable numeric GitHub organization or user ID that owns the repository."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[1-9][0-9]*$", var.github_owner_id))
+    error_message = "github_owner_id must be a positive numeric GitHub owner ID."
+  }
+}
+
+variable "github_repository_id" {
+  description = "Immutable numeric GitHub repository ID."
+  type        = string
+
+  validation {
+    condition     = can(regex("^[1-9][0-9]*$", var.github_repository_id))
+    error_message = "github_repository_id must be a positive numeric GitHub repository ID."
+  }
+}
+
 variable "environments" {
   description = "Fabric workspace keys passed to the main configuration."
   type        = set(string)
@@ -46,8 +66,8 @@ variable "github_environments" {
   default     = ["dev", "test", "prod"]
 
   validation {
-    condition     = length(var.github_environments) > 0 && length(var.github_environments) <= 20
-    error_message = "Specify 1-20 GitHub environments, within Entra's federated credential limit."
+    condition     = length(var.github_environments) > 0 && length(var.github_environments) <= 19
+    error_message = "Specify 1-19 GitHub environments, leaving one Entra federated credential for main-branch infrastructure deployment."
   }
 
   validation {

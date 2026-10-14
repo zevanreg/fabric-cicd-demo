@@ -30,11 +30,11 @@ deployment examples:
   secrets.
 
 The shared deployment application receives subscription-level Contributor and
-state-storage Blob Data Contributor access. Any trusted GitHub environment can
-therefore use those permissions; environment-scoped OIDC restricts token
-issuance but does not isolate Azure RBAC permissions. Protect the `dev`, `test`,
-and `prod` GitHub environments with suitable branch restrictions and approval
-rules.
+state-storage Blob Data Contributor access. Any trusted GitHub OIDC subject can
+therefore use those permissions; federation restricts token issuance but does
+not isolate Azure RBAC permissions. Protect the `dev`, `test`, and `prod`
+GitHub environments with suitable branch restrictions and approval rules, and
+protect the `main` branch used for infrastructure deployment.
 
 ## 1. Bootstrap Azure identity and remote state
 
@@ -64,6 +64,10 @@ Edit `infra/bootstrap/terraform.tfvars`:
 - `github_repository`: this monorepo in `OWNER/REPOSITORY` form. The example
   uses `zevanreg/fabric-cicd-demo`; change it if your GitHub owner or repository
   differs.
+- `github_owner_id`: immutable numeric ID of the GitHub organization or user
+  that owns the repository.
+- `github_repository_id`: immutable numeric repository ID. Find both IDs in
+  the GitHub API or the repository's OIDC configuration.
 - `deployment_application_display_name`: optional Entra application display
   name.
 - `environments`: Fabric workspace keys. The default provisions `developer1`,
@@ -71,6 +75,24 @@ Edit `infra/bootstrap/terraform.tfvars`:
 - `github_environments`: workspace environments allowed to run CI/CD workflows.
   The default is `dev`, `test`, and `prod`; `developer1` is provisioned only as
   a developer workspace.
+
+Use the GitHub CLI to retrieve the immutable numeric IDs:
+
+```bash
+gh auth login
+gh api orgs/OWNER --jq '.id'
+gh api repos/OWNER/REPOSITORY --jq '.id'
+```
+
+For a user-owned repository, replace the organization query with:
+
+```bash
+gh api users/OWNER --jq '.id'
+```
+
+Set the returned decimal values as `github_owner_id` and
+`github_repository_id`. Use the numeric `id` values, not the GraphQL `node_id`
+strings.
 
 Run bootstrap from the repository root:
 
@@ -86,9 +108,9 @@ terraform -chdir=infra/bootstrap output -raw deployment_config \
 
 The generated handoff files, Terraform state, plans, and tfvars are ignored by
 Git. Bootstrap creates environment-scoped OIDC credentials for the configured
-`github_environments` and configures the deployment application's Azure access.
-GitHub environments themselves are configured in the next section; bootstrap
-does not create them.
+`github_environments`, a main-branch credential for infrastructure deployment,
+and the deployment application's Azure access. GitHub environments themselves
+are configured in the next section; bootstrap does not create them.
 
 If resources are already managed by an earlier Terraform state, do not apply
 these configurations as a fresh deployment. Back up the existing states and
@@ -116,10 +138,13 @@ Add these **repository variables** for the infrastructure deployment workflow:
 | `FABRIC_CAPACITY_ADMINS` | Non-empty JSON array of Fabric administrator UPNs or service principal object IDs, for example `["admin@example.com"]`. Include the deployment identity if it administers the capacity. |
 
 The deployment workflows read these shared identifiers using `vars.*`; they do
-not need an Azure client secret. The infrastructure workflow runs against the
-protected `prod` environment for approval and OIDC subject matching. GitHub OIDC
-trusts `repo:OWNER/REPOSITORY:environment:ENVIRONMENT`, so the owner, repository
-name, and environment names must exactly match the bootstrap settings.
+not need an Azure client secret. Workload workflows use immutable environment
+subjects of the form
+`repo:OWNER@OWNER_ID/REPOSITORY@REPOSITORY_ID:environment:ENVIRONMENT`.
+Infrastructure deployment uses
+`repo:OWNER@OWNER_ID/REPOSITORY@REPOSITORY_ID:ref:refs/heads/main` and does not
+use a GitHub environment. The owner, repository, IDs, environment names, and
+branch must exactly match the bootstrap settings.
 
 Infrastructure CI is validation-only, requires no GitHub secrets or Azure
 credentials, and never applies Terraform.
@@ -131,12 +156,12 @@ GitHub Actions workflow. Do not run the main Terraform configuration locally.
 The workflow uses the bootstrapped OIDC identity, initializes the remote backend,
 and serializes runs against the shared state.
 
-1. Open **Actions → Deploy infrastructure → Run workflow**.
+1. Open **Actions → Deploy infrastructure → Run workflow** and select the
+   `main` branch.
 2. Select `plan` and review the complete Terraform plan.
-3. Obtain the required approval.
-4. Run the workflow again with `apply`. The apply run creates a fresh plan and
+3. Run the workflow again from `main` with `apply`. The apply run creates a fresh plan and
    applies that exact saved plan.
-5. Copy the environment-to-workspace ID map from the run summary.
+4. Copy the environment-to-workspace ID map from the run summary.
 
 The main configuration uses the OIDC deployment identity for Azure and Fabric
 management. The shared deployment application receives Contributor on each

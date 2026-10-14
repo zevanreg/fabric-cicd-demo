@@ -23,6 +23,11 @@ provider "azurerm" {
 
 data "azurerm_client_config" "current" {}
 
+locals {
+  github_repository_parts = split("/", var.github_repository)
+  github_oidc_repository  = "${local.github_repository_parts[0]}@${var.github_owner_id}/${local.github_repository_parts[1]}@${var.github_repository_id}"
+}
+
 resource "azuread_application_registration" "deployment" {
   display_name = var.deployment_application_display_name
 }
@@ -39,7 +44,16 @@ resource "azuread_application_federated_identity_credential" "github_environment
   description    = "GitHub Actions deployment from the ${each.key} environment."
   audiences      = ["api://AzureADTokenExchange"]
   issuer         = "https://token.actions.githubusercontent.com"
-  subject        = "repo:${var.github_repository}:environment:${each.key}"
+  subject        = "repo:${local.github_oidc_repository}:environment:${each.key}"
+}
+
+resource "azuread_application_federated_identity_credential" "github_main" {
+  application_id = azuread_application_registration.deployment.id
+  display_name   = "github-main"
+  description    = "GitHub Actions infrastructure deployment from the main branch."
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = "repo:${local.github_oidc_repository}:ref:refs/heads/main"
 }
 
 resource "azurerm_role_assignment" "deployment_contributor" {

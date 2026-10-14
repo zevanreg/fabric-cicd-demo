@@ -3,6 +3,8 @@ variables {
   storage_account_name = "fabricstatetest123"
   resource_group_name  = "rg-fabric-date-tfstate"
   github_repository    = "example/fabric-cicd-demo"
+  github_owner_id      = "12345678"
+  github_repository_id = "987654321"
   environments         = ["developer1", "dev", "test", "prod"]
   github_environments  = ["dev", "test", "prod"]
 }
@@ -67,13 +69,18 @@ run "state_storage" {
       toset(keys(azuread_application_federated_identity_credential.github_environment)) == var.github_environments &&
       alltrue([
         for environment, credential in azuread_application_federated_identity_credential.github_environment :
-        credential.subject == "repo:${var.github_repository}:environment:${environment}" &&
+        credential.subject == "repo:example@12345678/fabric-cicd-demo@987654321:environment:${environment}" &&
         credential.application_id == azuread_application_registration.deployment.id &&
         credential.issuer == "https://token.actions.githubusercontent.com" &&
         length(credential.audiences) == 1 && one(credential.audiences) == "api://AzureADTokenExchange"
-      ])
+      ]) &&
+      azuread_application_federated_identity_credential.github_main.subject == "repo:example@12345678/fabric-cicd-demo@987654321:ref:refs/heads/main" &&
+      azuread_application_federated_identity_credential.github_main.application_id == azuread_application_registration.deployment.id &&
+      azuread_application_federated_identity_credential.github_main.issuer == "https://token.actions.githubusercontent.com" &&
+      length(azuread_application_federated_identity_credential.github_main.audiences) == 1 &&
+      one(azuread_application_federated_identity_credential.github_main.audiences) == "api://AzureADTokenExchange"
     )
-    error_message = "Every CI/CD environment must have an exact environment-scoped GitHub OIDC credential on the shared app."
+    error_message = "Workload environments and main-branch infrastructure deployment must have exact GitHub OIDC credentials on the shared app."
   }
 
   assert {
@@ -119,8 +126,8 @@ run "reject_excess_credentials" {
   command = plan
 
   variables {
-    environments        = [for index in range(21) : "env${index}"]
-    github_environments = [for index in range(21) : "env${index}"]
+    environments        = [for index in range(20) : "env${index}"]
+    github_environments = [for index in range(20) : "env${index}"]
   }
 
   expect_failures = [var.environments, var.github_environments]
@@ -134,6 +141,17 @@ run "reject_invalid_environment" {
   }
 
   expect_failures = [var.environments]
+}
+
+run "reject_invalid_github_ids" {
+  command = plan
+
+  variables {
+    github_owner_id      = "example"
+    github_repository_id = "0"
+  }
+
+  expect_failures = [var.github_owner_id, var.github_repository_id]
 }
 
 run "reject_unmanaged_github_environment" {

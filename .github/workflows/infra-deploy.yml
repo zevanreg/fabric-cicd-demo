@@ -21,7 +21,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    environment: prod
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
       AZURE_CLIENT_OBJECT_ID: ${{ vars.AZURE_CLIENT_OBJECT_ID }}
@@ -34,6 +33,12 @@ jobs:
       TF_VAR_deployment_service_principal_object_id: ${{ vars.AZURE_CLIENT_OBJECT_ID }}
       TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
     steps:
+      - name: Require main branch
+        if: github.ref != 'refs/heads/main'
+        working-directory: .
+        run: |
+          echo "::error::Infrastructure deployment must be dispatched from the main branch."
+          exit 1
       - uses: actions/checkout@v4
         with:
           persist-credentials: false

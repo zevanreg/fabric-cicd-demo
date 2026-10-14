@@ -36,6 +36,11 @@ not isolate Azure RBAC permissions. Protect the `dev`, `test`, and `prod`
 GitHub environments with suitable branch restrictions and approval rules, and
 protect the `main` branch used for infrastructure deployment.
 
+The Terraform state account exposes its public network endpoint so
+GitHub-hosted runners can reach it. Blob data still requires Entra
+authentication: shared-key access and public blob access are disabled, and the
+deployment identity is scoped through Azure RBAC.
+
 ## 1. Bootstrap Azure identity and remote state
 
 Bootstrap state is local because it creates the storage account used by the

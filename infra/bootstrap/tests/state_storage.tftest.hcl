@@ -44,12 +44,13 @@ run "state_storage" {
 
   assert {
     condition = (
+      azurerm_storage_account.state.public_network_access == "Enabled" &&
       azurerm_storage_account.state.shared_access_key_enabled == false &&
       azurerm_storage_account.state.allow_nested_items_to_be_public == false &&
       azurerm_storage_account.state.min_tls_version == "TLS1_2" &&
       azurerm_storage_container.state.container_access_type == "private"
     )
-    error_message = "State storage must require Entra authentication, disallow public blobs, and enforce TLS 1.2."
+    error_message = "State storage must be reachable by hosted runners, require Entra authentication, disallow public blobs, and enforce TLS 1.2."
   }
 
   assert {

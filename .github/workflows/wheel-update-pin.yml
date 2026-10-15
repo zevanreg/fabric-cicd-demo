@@ -35,7 +35,7 @@ jobs:
           fi
       - uses: actions/checkout@v4
         with:
-          ref: dev
+          ref: main
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
@@ -57,7 +57,7 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.PIN_PR_TOKEN }}
-          base: dev
+          base: main
           branch: automation/library-release-pin/${{ steps.pin.outputs.tag }}
           add-paths: src/wheel-workloads/release.json
           commit-message: "Update demo-date pin to ${{ steps.pin.outputs.tag }}"
@@ -68,7 +68,7 @@ jobs:
             SHA-256: `${{ steps.pin.outputs.sha256 }}`
 
             Verified the stable release, published SHA256SUMS, wheel checksum, and package metadata.
-            Review this pin before merging into dev. Deployment and promotion remain unchanged.
+            Review this pin before merging into main. Deployment and promotion remain unchanged.
       - name: Report pull request
         env:
           PR_URL: ${{ steps.pr.outputs.pull-request-url }}

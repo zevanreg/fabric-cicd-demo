@@ -1,7 +1,7 @@
 name: Inline offline CI
 on:
   push:
-    branches: [dev]
+    branches: [feature/**]
     paths:
       - 'src/inline-workloads/**'
       - '.github/workflows/inline-*.yml'

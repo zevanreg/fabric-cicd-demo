@@ -1,7 +1,7 @@
 name: Wheel offline CI
 on:
   push:
-    branches: [dev]
+    branches: [feature/**]
     paths:
       - 'src/wheel-workloads/**'
       - '.github/workflows/wheel-*.yml'

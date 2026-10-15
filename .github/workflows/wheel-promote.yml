@@ -9,7 +9,14 @@ permissions:
   contents: read
   id-token: write
 jobs:
+  dev:
+    uses: ./.github/workflows/wheel-deploy.yml
+    with:
+      stage: dev
+    secrets:
+      GH_RELEASE_TOKEN: ${{ secrets.GH_RELEASE_TOKEN }}
   test:
+    needs: dev
     uses: ./.github/workflows/wheel-deploy.yml
     with:
       stage: test

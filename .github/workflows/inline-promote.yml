@@ -9,7 +9,12 @@ permissions:
   contents: read
   id-token: write
 jobs:
+  dev:
+    uses: ./.github/workflows/inline-deploy.yml
+    with:
+      stage: dev
   test:
+    needs: dev
     uses: ./.github/workflows/inline-deploy.yml
     with:
       stage: test

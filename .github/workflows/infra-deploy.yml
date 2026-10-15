@@ -67,7 +67,7 @@ jobs:
             throw "FABRIC_CAPACITY_ADMINS must be a JSON array."
           }
           try {
-            $capacityAdmins = @(ConvertFrom-Json -InputObject $capacityAdminJson)
+            $capacityAdmins = @(ConvertFrom-Json -InputObject $capacityAdminJson | ForEach-Object { $_ })
           }
           catch {
             throw "FABRIC_CAPACITY_ADMINS must be valid JSON: $($_.Exception.Message)"
@@ -97,7 +97,7 @@ jobs:
           )
           if ($stateAddresses.Count -eq 0) {
             throw "$stateHost did not resolve to an IPv4 address."
-          fi
+          }
           $nonPrivateAddresses = @(
             $stateAddresses | Where-Object {
               $octets = ([Net.IPAddress]::Parse($_)).GetAddressBytes()
@@ -110,7 +110,7 @@ jobs:
           )
           if ($nonPrivateAddresses.Count -gt 0) {
             throw "$stateHost resolved to non-private address(es): $($nonPrivateAddresses -join ', ')."
-          fi
+          }
           Write-Host "$stateHost resolves to private endpoint address(es): $($stateAddresses -join ', ')."
       - name: Initialize remote state
         shell: powershell

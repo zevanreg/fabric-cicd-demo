@@ -21,12 +21,15 @@ deployment examples:
   service principal, and federated identity credentials (for example,
   Application Administrator), plus permission to make the required Azure role
   assignments (for example, Role Based Access Control Administrator).
-- A Fabric administrator identity for managing workspaces. It must be a
-  capacity administrator and is separate from the shared workload deployment
-  identity.
-- Fabric tenant settings that allow the deployment application to use Fabric
-  APIs and create workspaces. If service principals are restricted to a
-  security group, include the deployment application in the allowed group.
+- A Fabric administrator identity that can configure tenant settings. It is
+  separate from the shared workload deployment identity.
+- The following Fabric tenant settings enabled for a security group containing
+  the deployment service principal:
+  - **Service principals can call Fabric public APIs**.
+  - **Service principals can create workspaces, connections, and deployment
+    pipelines**. This setting is disabled by default for new tenants.
+  Configure both under **OneLake catalog > Govern > Configurations > Tenant
+  settings** in the Fabric portal.
 - A GitHub repository owner who can configure environments, variables, and
   secrets.
 
@@ -215,8 +218,9 @@ initializes the remote backend, and serializes runs against the shared state.
 4. Copy the environment-to-workspace ID map from the run summary.
 
 The main configuration uses the OIDC deployment identity for Azure and Fabric
-management. The shared deployment application receives Contributor on each
-managed Fabric workspace for workload publishing.
+management. Fabric automatically grants the shared deployment application
+Admin on each workspace it creates; Terraform does not add a duplicate role
+assignment. The workload workflows reuse that identity for publishing.
 
 Creating a Fabric capacity can incur charges. Obtain approval first, and pause
 the capacity when not in use. Keep both Terraform states safe; do not delete

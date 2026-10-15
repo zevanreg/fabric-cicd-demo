@@ -14,7 +14,7 @@ output "deployment_application_client_id" {
 }
 
 output "deployment_service_principal_object_id" {
-  description = "Object ID of the service principal granted Contributor on every managed Fabric workspace."
+  description = "Object ID of the service principal that creates and administers the managed Fabric workspaces."
   value       = var.deployment_service_principal_object_id
 }
 

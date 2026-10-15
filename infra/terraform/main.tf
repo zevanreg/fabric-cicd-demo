@@ -37,14 +37,3 @@ resource "fabric_workspace" "this" {
   description  = "Date demo ${each.key} workspace. Managed by Terraform."
   capacity_id  = data.fabric_capacity.this.id
 }
-
-resource "fabric_workspace_role_assignment" "deployment_contributor" {
-  for_each = fabric_workspace.this
-
-  workspace_id = each.value.id
-  principal = {
-    id   = var.deployment_service_principal_object_id
-    type = "ServicePrincipal"
-  }
-  role = "Contributor"
-}

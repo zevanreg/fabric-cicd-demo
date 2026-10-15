@@ -14,7 +14,7 @@ variable "deployment_application_client_id" {
 }
 
 variable "deployment_service_principal_object_id" {
-  description = "Object ID (not client ID) of the bootstrap deployment service principal granted Fabric workspace Contributor."
+  description = "Object ID (not client ID) of the bootstrap deployment service principal that administers the capacity and creates the workspaces."
   type        = string
 
   validation {

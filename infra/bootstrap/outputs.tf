@@ -39,7 +39,7 @@ output "deployment_application_client_id" {
 }
 
 output "deployment_service_principal_object_id" {
-  description = "Object ID of the shared deployment service principal; used for Fabric Contributor assignments."
+  description = "Object ID of the shared deployment service principal that creates and administers Fabric workspaces."
   value       = azuread_service_principal.deployment.object_id
 }
 

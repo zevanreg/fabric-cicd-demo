@@ -48,7 +48,7 @@ variable "location" {
 variable "resource_group_name" {
   description = "Resource group that holds the Fabric capacity."
   type        = string
-  default     = "rg-fabric-cicd-demo"
+  default     = "rg-fabric-cicd-demo-workload"
 }
 
 variable "capacity_name" {

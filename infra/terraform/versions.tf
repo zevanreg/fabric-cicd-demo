@@ -7,6 +7,10 @@ terraform {
   }
 
   required_providers {
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 3.10"
+    }
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 5.9"
@@ -21,6 +25,8 @@ terraform {
 }
 
 # Providers authenticate with Azure CLI by default; Fabric role management requires a separate administrator identity.
+provider "azuread" {}
+
 provider "azurerm" {
   features {}
   subscription_id = var.subscription_id

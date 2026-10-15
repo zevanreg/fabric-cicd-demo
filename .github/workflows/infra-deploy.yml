@@ -33,6 +33,7 @@ jobs:
       TF_VAR_deployment_application_client_id: ${{ vars.AZURE_CLIENT_ID }}
       TF_VAR_deployment_service_principal_object_id: ${{ vars.AZURE_CLIENT_OBJECT_ID }}
       TF_VAR_subscription_id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      TF_VAR_workspace_access_user_principal_names: ${{ vars.FABRIC_WORKSPACE_ACCESS_USERS }}
     steps:
       - name: Require main branch
         if: github.ref != 'refs/heads/main'
@@ -52,7 +53,8 @@ jobs:
             "AZURE_TENANT_ID",
             "TFSTATE_RESOURCE_GROUP",
             "TFSTATE_STORAGE_ACCOUNT",
-            "TF_VAR_capacity_admins"
+            "TF_VAR_capacity_admins",
+            "TF_VAR_workspace_access_user_principal_names"
           )
           $missingVariables = @(
             $requiredVariables | Where-Object {

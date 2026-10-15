@@ -31,6 +31,12 @@ provider "azurerm" {
 
 data "azurerm_client_config" "current" {}
 
+data "azuread_application_published_app_ids" "well_known" {}
+
+data "azuread_service_principal" "microsoft_graph" {
+  client_id = data.azuread_application_published_app_ids.well_known.result.MicrosoftGraph
+}
+
 locals {
   github_repository_parts = split("/", var.github_repository)
   github_oidc_repository  = "${local.github_repository_parts[0]}@${var.github_owner_id}/${local.github_repository_parts[1]}@${var.github_repository_id}"
@@ -42,6 +48,18 @@ resource "azuread_application_registration" "deployment" {
 
 resource "azuread_service_principal" "deployment" {
   client_id = azuread_application_registration.deployment.client_id
+}
+
+resource "azuread_application_api_access" "deployment_user_read" {
+  application_id = azuread_application_registration.deployment.id
+  api_client_id  = data.azuread_application_published_app_ids.well_known.result.MicrosoftGraph
+  role_ids       = [data.azuread_service_principal.microsoft_graph.app_role_ids["User.ReadBasic.All"]]
+}
+
+resource "azuread_app_role_assignment" "deployment_user_read" {
+  app_role_id         = data.azuread_service_principal.microsoft_graph.app_role_ids["User.ReadBasic.All"]
+  principal_object_id = azuread_service_principal.deployment.object_id
+  resource_object_id  = data.azuread_service_principal.microsoft_graph.object_id
 }
 
 resource "azuread_application_federated_identity_credential" "github_environment" {

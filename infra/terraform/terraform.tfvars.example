@@ -4,3 +4,4 @@ capacity_name    = "fccicddemoswedencentral1"
 capacity_sku     = "F2"
 capacity_admins  = ["you@contoso.com"]
 workspace_prefix = "fabric-cicd-demo"
+workspace_access_user_principal_names = ["you@contoso.com"]

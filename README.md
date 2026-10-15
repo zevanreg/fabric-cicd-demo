@@ -19,8 +19,9 @@ deployment examples:
   register resource providers.
 - Entra permissions for the bootstrap operator to create an app registration,
   service principal, and federated identity credentials (for example,
-  Application Administrator), plus permission to make the required Azure role
-  assignments (for example, Role Based Access Control Administrator).
+  Application Administrator), grant Microsoft Graph `User.ReadBasic.All`
+  application consent, and make the required Azure role assignments (for
+  example, Role Based Access Control Administrator).
 - A Fabric administrator identity that can configure tenant settings. It is
   separate from the shared workload deployment identity.
 - The following Fabric tenant settings enabled for a security group containing
@@ -189,6 +190,7 @@ Add these **repository variables** for the infrastructure deployment workflow:
 | `TFSTATE_RESOURCE_GROUP` | Bootstrap state resource group name. |
 | `TFSTATE_STORAGE_ACCOUNT` | Bootstrap state storage account name. |
 | `FABRIC_CAPACITY_ADMINS` | Non-empty JSON array of additional Fabric administrator UPNs or service principal object IDs, for example `["admin@example.com"]`. The deployment service principal is always included so the workflow can discover and manage the capacity. |
+| `FABRIC_WORKSPACE_ACCESS_USERS` | Non-empty JSON array of Entra user principal names granted Admin on `developer1` and Viewer on every other workspace, for example `["admin@example.com"]`. Terraform resolves the object IDs through Microsoft Graph. |
 
 The deployment workflows read these shared identifiers using `vars.*`; they do
 not need an Azure client secret. Workload workflows use immutable environment
@@ -220,7 +222,10 @@ initializes the remote backend, and serializes runs against the shared state.
 The main configuration uses the OIDC deployment identity for Azure and Fabric
 management. Fabric automatically grants the shared deployment application
 Admin on each workspace it creates; Terraform does not add a duplicate role
-assignment. The workload workflows reuse that identity for publishing.
+assignment. Terraform separately grants every
+`FABRIC_WORKSPACE_ACCESS_USERS` user Admin on `developer1` and Viewer on the
+remaining workspaces. The workload workflows reuse the deployment identity for
+publishing.
 
 Creating a Fabric capacity can incur charges. Obtain approval first, and pause
 the capacity when not in use. Keep both Terraform states safe; do not delete

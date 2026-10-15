@@ -20,6 +20,23 @@ mock_provider "random" {
 }
 
 mock_provider "azuread" {
+  mock_data "azuread_application_published_app_ids" {
+    defaults = {
+      result = {
+        MicrosoftGraph = "00000003-0000-0000-c000-000000000000"
+      }
+    }
+  }
+
+  mock_data "azuread_service_principal" {
+    defaults = {
+      object_id = "77777777-7777-4777-8777-777777777777"
+      app_role_ids = {
+        "User.ReadBasic.All" = "97235f07-e226-4f63-ace3-39588e11d3a1"
+      }
+    }
+  }
+
   mock_resource "azuread_application_registration" {
     defaults = {
       id        = "/applications/44444444-4444-4444-8444-444444444444"
@@ -150,9 +167,12 @@ run "state_storage" {
       azurerm_role_assignment.state_deployment.role_definition_name == "Storage Blob Data Contributor" &&
       azurerm_role_assignment.deployment_contributor.principal_id == azuread_service_principal.deployment.object_id &&
       azurerm_role_assignment.deployment_contributor.scope == "/subscriptions/${var.subscription_id}" &&
-      azurerm_role_assignment.deployment_contributor.role_definition_name == "Contributor"
+      azurerm_role_assignment.deployment_contributor.role_definition_name == "Contributor" &&
+      azuread_app_role_assignment.deployment_user_read.principal_object_id == azuread_service_principal.deployment.object_id &&
+      azuread_app_role_assignment.deployment_user_read.app_role_id == data.azuread_service_principal.microsoft_graph.app_role_ids["User.ReadBasic.All"] &&
+      azuread_app_role_assignment.deployment_user_read.resource_object_id == data.azuread_service_principal.microsoft_graph.object_id
     )
-    error_message = "The bootstrapped deployment identity must have subscription Contributor and state Blob Data Contributor access."
+    error_message = "The deployment identity must have Azure roles and Microsoft Graph User.ReadBasic.All."
   }
 
   assert {

@@ -37,3 +37,28 @@ resource "fabric_workspace" "this" {
   description  = "Date demo ${each.key} workspace. Managed by Terraform."
   capacity_id  = data.fabric_capacity.this.id
 }
+
+data "azuread_users" "workspace_access" {
+  user_principal_names = var.workspace_access_user_principal_names
+}
+
+locals {
+  workspace_access_assignments = {
+    for assignment in setproduct(var.environments, data.azuread_users.workspace_access.users) :
+    "${assignment[0]}:${lower(assignment[1].user_principal_name)}" => {
+      environment = assignment[0]
+      principal = {
+        id   = assignment[1].object_id
+        type = "User"
+      }
+    }
+  }
+}
+
+resource "fabric_workspace_role_assignment" "workspace_access" {
+  for_each = local.workspace_access_assignments
+
+  workspace_id = fabric_workspace.this[each.value.environment].id
+  principal    = each.value.principal
+  role         = each.value.environment == "developer1" ? "Admin" : "Viewer"
+}

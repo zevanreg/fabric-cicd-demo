@@ -29,8 +29,8 @@ variable "environments" {
   default     = ["developer1", "dev", "test", "prod"]
 
   validation {
-    condition     = length(var.environments) > 0 && length(var.environments) <= 10
-    error_message = "Specify 1-10 environments matching bootstrap."
+    condition     = contains(var.environments, "developer1") && length(var.environments) <= 10
+    error_message = "Specify developer1 and up to nine additional environments matching bootstrap."
   }
 
   validation {
@@ -91,6 +91,22 @@ variable "workspace_prefix" {
   validation {
     condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$", var.workspace_prefix))
     error_message = "workspace_prefix must be 1-200 letters, digits, dots, underscores or hyphens."
+  }
+}
+
+variable "workspace_access_user_principal_names" {
+  description = "User principal names granted Admin on developer1 and Viewer on every other managed workspace."
+  type        = set(string)
+
+  validation {
+    condition = (
+      length(var.workspace_access_user_principal_names) > 0 &&
+      alltrue([
+        for user_principal_name in var.workspace_access_user_principal_names :
+        can(regex("^[^@]+@[^@]+$", user_principal_name))
+      ])
+    )
+    error_message = "workspace_access_user_principal_names must contain at least one valid user principal name."
   }
 }
 

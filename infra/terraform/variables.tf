@@ -54,7 +54,7 @@ variable "resource_group_name" {
 variable "capacity_name" {
   description = "Fabric capacity name: 3-63 lowercase letters and digits, starting with a letter."
   type        = string
-  default     = "fabriccicddemo"
+  default     = "fccicddemoswedencentral1"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9]{2,62}$", var.capacity_name))

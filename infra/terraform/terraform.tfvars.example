@@ -1,6 +1,6 @@
 subscription_id  = "00000000-0000-0000-0000-000000000000"
 location         = "swedencentral"
-capacity_name    = "fabriccicddemo"
+capacity_name    = "fccicddemoswedencentral1"
 capacity_sku     = "F2"
 capacity_admins  = ["you@contoso.com"]
 workspace_prefix = "fabric-cicd-demo"

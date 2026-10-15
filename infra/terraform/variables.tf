@@ -74,7 +74,7 @@ variable "capacity_sku" {
 }
 
 variable "capacity_admins" {
-  description = "Capacity administrators: Entra user UPNs or service principal object IDs. Must include the identity running Terraform."
+  description = "Additional capacity administrators: Entra user UPNs or service principal object IDs. The deployment service principal is always included."
   type        = list(string)
 
   validation {

@@ -185,7 +185,7 @@ Add these **repository variables** for the infrastructure deployment workflow:
 | `AZURE_CLIENT_OBJECT_ID` | Bootstrap output `deployment_service_principal_object_id`. |
 | `TFSTATE_RESOURCE_GROUP` | Bootstrap state resource group name. |
 | `TFSTATE_STORAGE_ACCOUNT` | Bootstrap state storage account name. |
-| `FABRIC_CAPACITY_ADMINS` | Non-empty JSON array of Fabric administrator UPNs or service principal object IDs, for example `["admin@example.com"]`. Include the deployment identity if it administers the capacity. |
+| `FABRIC_CAPACITY_ADMINS` | Non-empty JSON array of additional Fabric administrator UPNs or service principal object IDs, for example `["admin@example.com"]`. The deployment service principal is always included so the workflow can discover and manage the capacity. |
 
 The deployment workflows read these shared identifiers using `vars.*`; they do
 not need an Azure client secret. Workload workflows use immutable environment

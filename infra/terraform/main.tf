@@ -8,7 +8,7 @@ resource "azurerm_fabric_capacity" "this" {
   name                   = var.capacity_name
   resource_group_name    = azurerm_resource_group.fabric.name
   location               = azurerm_resource_group.fabric.location
-  administration_members = var.capacity_admins
+  administration_members = distinct(concat(var.capacity_admins, [var.deployment_service_principal_object_id]))
   tags                   = var.tags
 
   sku {
@@ -20,6 +20,7 @@ resource "azurerm_fabric_capacity" "this" {
 # The Fabric capacity UUID differs from the ARM resource ID, so look it up in Fabric by name.
 data "fabric_capacity" "this" {
   display_name = azurerm_fabric_capacity.this.name
+  depends_on   = [azurerm_fabric_capacity.this]
 
   lifecycle {
     postcondition {

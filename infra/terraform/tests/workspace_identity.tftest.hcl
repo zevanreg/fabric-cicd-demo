@@ -25,6 +25,7 @@ run "bootstrapped_workspace_contributor" {
     condition = (
       toset(keys(fabric_workspace.this)) == var.environments &&
       toset(keys(fabric_workspace_role_assignment.deployment_contributor)) == var.environments &&
+      toset(azurerm_fabric_capacity.this.administration_members) == toset(concat(var.capacity_admins, [var.deployment_service_principal_object_id])) &&
       alltrue([
         for environment, workspace in fabric_workspace.this :
         workspace.display_name == "${var.workspace_prefix}-${environment}"
@@ -36,7 +37,7 @@ run "bootstrapped_workspace_contributor" {
         assignment.role == "Contributor"
       ])
     )
-    error_message = "Each environment must have its own workspace with Contributor assigned to the bootstrapped service principal."
+    error_message = "The bootstrapped service principal must administer the capacity and have Contributor on every environment workspace."
   }
 
   assert {

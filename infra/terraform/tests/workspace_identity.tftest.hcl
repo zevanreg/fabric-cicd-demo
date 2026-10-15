@@ -17,7 +17,7 @@ run "bootstrapped_workspace_contributor" {
     deployment_application_client_id       = "33333333-3333-4333-8333-333333333333"
     deployment_service_principal_object_id = "44444444-4444-4444-8444-444444444444"
     capacity_admins                        = ["admin@example.com"]
-    workspace_prefix                       = "fabric-date"
+    workspace_prefix                       = "fabric-cicd-demo"
     environments                           = ["developer1", "dev", "test", "prod"]
   }
 

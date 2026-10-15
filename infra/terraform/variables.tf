@@ -42,19 +42,19 @@ variable "environments" {
 variable "location" {
   description = "Azure region for the resource group and Fabric capacity."
   type        = string
-  default     = "westeurope"
+  default     = "swedencentral"
 }
 
 variable "resource_group_name" {
   description = "Resource group that holds the Fabric capacity."
   type        = string
-  default     = "rg-fabric-date"
+  default     = "rg-fabric-cicd-demo"
 }
 
 variable "capacity_name" {
   description = "Fabric capacity name: 3-63 lowercase letters and digits, starting with a letter."
   type        = string
-  default     = "fabricdate"
+  default     = "fabriccicddemo"
 
   validation {
     condition     = can(regex("^[a-z][a-z0-9]{2,62}$", var.capacity_name))
@@ -63,7 +63,7 @@ variable "capacity_name" {
 }
 
 variable "capacity_sku" {
-  description = "Fabric capacity SKU. F2 is the smallest size and is sufficient for the date demo."
+  description = "Fabric capacity SKU. F2 is the smallest size and is sufficient for the demo."
   type        = string
   default     = "F2"
 
@@ -86,7 +86,7 @@ variable "capacity_admins" {
 variable "workspace_prefix" {
   description = "Stable prefix for workspace names, including the separate developer1 feature-development workspace."
   type        = string
-  default     = "fabric-date"
+  default     = "fabric-cicd-demo"
 
   validation {
     condition     = can(regex("^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$", var.workspace_prefix))
@@ -98,6 +98,6 @@ variable "tags" {
   description = "Tags applied to the resource group and capacity."
   type        = map(string)
   default = {
-    workload = "fabric-date"
+    workload = "fabric-cicd-demo"
   }
 }

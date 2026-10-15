@@ -86,13 +86,13 @@ check "github_environments_have_workspaces" {
 variable "resource_group_name" {
   description = "Dedicated resource group for Terraform state, separate from Fabric resources."
   type        = string
-  default     = "rg-fabric-date-tfstate"
+  default     = "rg-fabric-cicd-demo"
 }
 
 variable "location" {
   description = "Azure region for Terraform state storage."
   type        = string
-  default     = "westeurope"
+  default     = "swedencentral"
 }
 
 variable "storage_account_name" {
@@ -108,7 +108,7 @@ variable "storage_account_name" {
 variable "virtual_network_name" {
   description = "Name of the VNet containing the private runner and storage private endpoint."
   type        = string
-  default     = "vnet-fabric-date-runner"
+  default     = "vnet-fabric-cicd-demo-runner"
 }
 
 variable "virtual_network_address_space" {
@@ -183,7 +183,7 @@ variable "tags" {
   description = "Tags applied to Terraform state resources."
   type        = map(string)
   default = {
-    workload = "fabric-date"
+    workload = "fabric-cicd-demo"
     purpose  = "terraform-state"
   }
 }

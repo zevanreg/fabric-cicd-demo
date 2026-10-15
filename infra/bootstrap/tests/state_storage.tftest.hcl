@@ -1,7 +1,7 @@
 variables {
   subscription_id      = "33333333-3333-4333-8333-333333333333"
   storage_account_name = "fabricstatetest123"
-  resource_group_name  = "rg-fabric-date-tfstate"
+  resource_group_name  = "rg-fabric-cicd-demo"
   github_repository    = "example/fabric-cicd-demo"
   github_owner_id      = "12345678"
   github_repository_id = "987654321"
@@ -44,57 +44,57 @@ mock_provider "azurerm" {
 
   mock_resource "azurerm_storage_account" {
     defaults = {
-      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Storage/storageAccounts/fabricstatetest123"
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Storage/storageAccounts/fabricstatetest123"
     }
   }
 
   mock_resource "azurerm_network_interface" {
     defaults = {
-      id                 = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/networkInterfaces/vm-fabric-infra-runner-nic"
+      id                 = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Network/networkInterfaces/vm-fabric-infra-runner-nic"
       private_ip_address = "10.42.1.4"
     }
   }
 
   mock_resource "azurerm_public_ip" {
     defaults = {
-      id         = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/publicIPAddresses/vm-fabric-infra-runner-egress-pip"
+      id         = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Network/publicIPAddresses/vm-fabric-infra-runner-egress-pip"
       ip_address = "203.0.113.10"
     }
   }
 
   mock_resource "azurerm_nat_gateway" {
     defaults = {
-      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/natGateways/vm-fabric-infra-runner-nat"
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Network/natGateways/vm-fabric-infra-runner-nat"
     }
   }
 
   mock_resource "azurerm_network_security_group" {
     defaults = {
-      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/networkSecurityGroups/vm-fabric-infra-runner-nsg"
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Network/networkSecurityGroups/vm-fabric-infra-runner-nsg"
     }
   }
 
   mock_resource "azurerm_virtual_network" {
     defaults = {
-      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/virtualNetworks/vnet-fabric-date-runner"
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Network/virtualNetworks/vnet-fabric-cicd-demo-runner"
     }
   }
 
   mock_resource "azurerm_subnet" {
     defaults = {
-      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/virtualNetworks/vnet-fabric-date-runner/subnets/mock"
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Network/virtualNetworks/vnet-fabric-cicd-demo-runner/subnets/mock"
     }
   }
 
   mock_resource "azurerm_private_dns_zone" {
     defaults = {
-      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
     }
   }
 
   mock_resource "azurerm_windows_virtual_machine" {
     defaults = {
-      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Compute/virtualMachines/vm-fabric-infra-runner"
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-cicd-demo/providers/Microsoft.Compute/virtualMachines/vm-fabric-infra-runner"
     }
   }
 }
@@ -202,7 +202,7 @@ run "state_storage" {
 
   assert {
     condition     = output.backend_config == <<-EOT
-      resource_group_name  = "rg-fabric-date-tfstate"
+      resource_group_name  = "rg-fabric-cicd-demo"
       storage_account_name = "fabricstatetest123"
       container_name       = "tfstate"
       key                  = "fabric-infrastructure.tfstate"

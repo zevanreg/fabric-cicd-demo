@@ -95,7 +95,7 @@ variable "workspace_prefix" {
 }
 
 variable "workspace_access_user_principal_names" {
-  description = "User principal names granted Admin on developer1 and Viewer on every other managed workspace."
+  description = "User principal names granted Admin on developer1 and dev, and Viewer on every other managed workspace."
   type        = set(string)
 
   validation {

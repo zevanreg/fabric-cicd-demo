@@ -46,10 +46,10 @@ run "bootstrapped_workspace_management" {
         for key, assignment in fabric_workspace_role_assignment.workspace_access :
         assignment.principal.id == "55555555-5555-4555-8555-555555555555" &&
         assignment.principal.type == "User" &&
-        assignment.role == (startswith(key, "developer1:") ? "Admin" : "Viewer")
+        assignment.role == (contains(["developer1", "dev"], split(":", key)[0]) ? "Admin" : "Viewer")
       ])
     )
-    error_message = "The deployment principal must administer the capacity, every environment must have a workspace, and configured principals must receive Admin on developer1 and Viewer elsewhere."
+    error_message = "The deployment principal must administer the capacity, every environment must have a workspace, and configured principals must receive Admin on developer1 and dev, and Viewer elsewhere."
   }
 
   assert {

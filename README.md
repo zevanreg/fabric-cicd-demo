@@ -190,7 +190,7 @@ Add these **repository variables** for the infrastructure deployment workflow:
 | `TFSTATE_RESOURCE_GROUP` | Bootstrap state resource group name. |
 | `TFSTATE_STORAGE_ACCOUNT` | Bootstrap state storage account name. |
 | `FABRIC_CAPACITY_ADMINS` | Non-empty JSON array of additional Fabric administrator UPNs or service principal object IDs, for example `["admin@example.com"]`. The deployment service principal is always included so the workflow can discover and manage the capacity. |
-| `FABRIC_WORKSPACE_ACCESS_USERS` | Non-empty JSON array of Entra user principal names granted Admin on `developer1` and Viewer on every other workspace, for example `["admin@example.com"]`. Terraform resolves the object IDs through Microsoft Graph. |
+| `FABRIC_WORKSPACE_ACCESS_USERS` | Non-empty JSON array of Entra user principal names granted Admin on `developer1` and `dev`, and Viewer on every other workspace, for example `["admin@example.com"]`. Terraform resolves the object IDs through Microsoft Graph. |
 
 The deployment workflows read these shared identifiers using `vars.*`; they do
 not need an Azure client secret. Workload workflows use immutable environment
@@ -223,9 +223,9 @@ The main configuration uses the OIDC deployment identity for Azure and Fabric
 management. Fabric automatically grants the shared deployment application
 Admin on each workspace it creates; Terraform does not add a duplicate role
 assignment. Terraform separately grants every
-`FABRIC_WORKSPACE_ACCESS_USERS` user Admin on `developer1` and Viewer on the
-remaining workspaces. The workload workflows reuse the deployment identity for
-publishing.
+`FABRIC_WORKSPACE_ACCESS_USERS` user Admin on `developer1` and `dev`, and Viewer
+on the remaining workspaces. The workload workflows reuse the deployment
+identity for publishing.
 
 Creating a Fabric capacity can incur charges. Obtain approval first, and pause
 the capacity when not in use. Keep both Terraform states safe; do not delete

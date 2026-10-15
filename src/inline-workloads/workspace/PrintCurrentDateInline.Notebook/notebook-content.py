@@ -13,6 +13,7 @@
 
 from datetime import datetime, timezone
 
+print("Hello")
 print(datetime.now(timezone.utc).isoformat(timespec="seconds"))
 
 # METADATA ********************

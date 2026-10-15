@@ -7,6 +7,7 @@ provider "registry.terraform.io/hashicorp/azurerm" {
   hashes = [
     "h1:clt4ZAUZh3HKZXrIEHNAGeOibS+/ckYblATS3eT0Tfk=",
     "h1:d4Pss+4L4JJQEFbw6dgQlCc4IroeMHkMjfxab+RsSSQ=",
+    "h1:hnGWGNJAEC+7KAJP/IR2g3J7tMfuYjElSPpwJzme8DA=",
     "zh:1c2dca15d1c24bcd98fb4d163bfcaad9cfb6cfda8b9965297fcaa918dfadc5f0",
     "zh:3d3ad0a26eb7058f61f412722bf9d03795eb23bf97d693fdc8cbebe830090116",
     "zh:44a755607e385f5811e6eb2f73016f9bab73340d138528da73bb0cf994f7524f",
@@ -28,6 +29,7 @@ provider "registry.terraform.io/microsoft/fabric" {
   hashes = [
     "h1:26GkOD8PCIFhzM6fgALVL6Kuta9WOs1H/A25SpDcUCY=",
     "h1:gnA6XOB4XkWj8/dJYr5h7wMacxLqkYso86EUbuCtaa8=",
+    "h1:p3mbO3ufH22DolpzRPjEXharn5/+ruyH3nmaOtPbw6U=",
     "zh:0ea15cd75fa54717463661a565b7bad0f63c0c1ecb0f08ced32c0da69058a76c",
     "zh:341ab5879a64f5eb88dd03a1463a1b28e19086376fc640eca2e2577b8500609c",
     "zh:3efda5dc1fe19c617c23c6c04d837b3ecd6972e1d465a6d07286e1249210418f",

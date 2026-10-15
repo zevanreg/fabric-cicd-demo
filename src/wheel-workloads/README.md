@@ -35,7 +35,7 @@ has been approved.
 
 Run **Actions → Update wheel library release pin** from `main` with the published
 release tag. The workflow verifies the release and opens or updates a pin-only
-pull request against `dev`. Review and merge that pull request normally.
+pull request against `main`. Review and merge that pull request normally.
 
 The updater rejects downgrades and changed assets for an already pinned tag. It
 does not auto-merge or deploy. Re-running an unchanged tag is a no-op.

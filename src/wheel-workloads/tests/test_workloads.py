@@ -267,12 +267,12 @@ class WorkloadTests(unittest.TestCase):
         self.assertEqual(workflow["jobs"]["deploy"]["environment"], "${{ inputs.stage }}")
         self.assertEqual(workflow["jobs"]["deploy"]["timeout-minutes"], 90)
 
-    def test_ci_triggers_development_pushes_and_pull_requests(self):
+    def test_ci_triggers_feature_branch_pushes_and_pull_requests(self):
         workflow = load_workflow("wheel-ci.yml")
         self.assertEqual(set(workflow["on"]), {"push", "pull_request"})
-        self.assertEqual(workflow["on"]["push"]["branches"], ["dev"])
+        self.assertEqual(workflow["on"]["push"]["branches"], ["feature/**"])
 
-    def test_pin_update_workflow_opens_reviewed_dev_pr_without_deployment(self):
+    def test_pin_update_workflow_opens_reviewed_main_pr_without_deployment(self):
         workflow = load_workflow("wheel-update-pin.yml")
         self.assertEqual(set(workflow["on"]), {"workflow_dispatch"})
         self.assertEqual(workflow["on"]["workflow_dispatch"]["inputs"]["tag"], {
@@ -288,7 +288,9 @@ class WorkloadTests(unittest.TestCase):
         self.assertEqual(job["if"], "github.ref == 'refs/heads/main'")
         steps = job["steps"]
         checkout = next(step for step in steps if step.get("uses") == "actions/checkout@v4")
-        self.assertEqual(checkout["with"], {"ref": "dev", "persist-credentials": "false"})
+        self.assertEqual(checkout["with"], {"ref": "main", "persist-credentials": "false"})
+        credentials = next(step for step in steps if step.get("name") == "Require PR credentials")
+        self.assertLess(steps.index(checkout), steps.index(credentials))
         update = next(step for step in steps if step.get("name") == "Update pin from verified published assets")
         self.assertEqual(update["env"], {
             "GH_TOKEN": "${{ secrets.GH_RELEASE_TOKEN || github.token }}",
@@ -297,7 +299,7 @@ class WorkloadTests(unittest.TestCase):
         self.assertEqual(update["run"], 'python scripts/release_pin.py --update-tag "$RELEASE_TAG"')
         pr = next(step for step in steps if step.get("uses") == "peter-evans/create-pull-request@v7")
         self.assertEqual(pr["with"]["token"], "${{ secrets.PIN_PR_TOKEN }}")
-        self.assertEqual(pr["with"]["base"], "dev")
+        self.assertEqual(pr["with"]["base"], "main")
         self.assertEqual(pr["with"]["branch"],
                  "automation/library-release-pin/${{ steps.pin.outputs.tag }}")
         self.assertEqual(pr["with"]["add-paths"], "src/wheel-workloads/release.json")

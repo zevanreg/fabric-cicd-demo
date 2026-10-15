@@ -334,15 +334,16 @@ class WorkloadTests(unittest.TestCase):
         self.assertNotIn("TARGET_REF", job["env"])
         self.assertNotIn("TARGET_REF", "\n".join(step.get("run", "") for step in job["steps"]))
 
-    def test_main_promotes_test_before_prod_using_same_workflow(self):
+    def test_main_promotes_dev_before_test_and_prod_using_same_workflow(self):
         workflow = load_workflow("wheel-promote.yml")
         self.assertEqual(workflow["on"], {"push": {"branches": ["main"], "paths": ["src/wheel-workloads/**", ".github/workflows/wheel-*.yml"]}})
         self.assertEqual(workflow["permissions"], {"contents": "read", "id-token": "write"})
         jobs = workflow["jobs"]
-        self.assertEqual(set(jobs), {"test", "prod"})
-        self.assertNotIn("needs", jobs["test"])
+        self.assertEqual(set(jobs), {"dev", "test", "prod"})
+        self.assertNotIn("needs", jobs["dev"])
+        self.assertEqual(jobs["test"]["needs"], "dev")
         self.assertEqual(jobs["prod"]["needs"], "test")
-        for stage in ["test", "prod"]:
+        for stage in ["dev", "test", "prod"]:
             with self.subTest(stage=stage):
                 self.assertEqual(jobs[stage]["uses"], "./.github/workflows/wheel-deploy.yml")
                 self.assertEqual(jobs[stage]["with"], {"stage": stage})

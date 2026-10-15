@@ -5,7 +5,7 @@ deployment examples:
 
 | Path | Purpose |
 | --- | --- |
-| `infra/bootstrap/` | Creates the deployment identity, GitHub OIDC trust, and remote Terraform state storage. |
+| `infra/bootstrap/` | Creates the deployment identity, GitHub OIDC trust, private Terraform state storage, and self-hosted infrastructure runner. |
 | `infra/terraform/` | Creates the Fabric capacity and one Fabric workspace per configured environment. |
 | `src/inline-workloads/` | Deploys the inline notebook workload. |
 | `src/wheel-workloads/` | Deploys the wheel-based workload and its Fabric environment. |
@@ -13,6 +13,7 @@ deployment examples:
 ## Prerequisites
 
 - Terraform 1.8 or later and Azure CLI.
+- GitHub CLI authenticated as a repository administrator.
 - An Azure subscription where the bootstrap operator can create a resource
   group and storage account, assign Azure roles at subscription scope, and
   register resource providers.
@@ -36,10 +37,12 @@ not isolate Azure RBAC permissions. Protect the `dev`, `test`, and `prod`
 GitHub environments with suitable branch restrictions and approval rules, and
 protect the `main` branch used for infrastructure deployment.
 
-The Terraform state account exposes its public network endpoint so
-GitHub-hosted runners can reach it. Blob data still requires Entra
-authentication: shared-key access and public blob access are disabled, and the
-deployment identity is scoped through Azure RBAC.
+The Terraform state account disables public network access. Its blob endpoint
+is reachable only through a private endpoint in the bootstrap VNet. A private
+Windows Server VM runs infrastructure deployments, resolves the endpoint through an
+Azure Private DNS zone, and uses a NAT Gateway for outbound GitHub, Azure, and
+package access. The VM has no public IP and its NSG denies all inbound traffic.
+Shared-key access and public blob access are also disabled.
 
 ## 1. Bootstrap Azure identity and remote state
 
@@ -56,6 +59,8 @@ provide your Azure subscription and a globally unique storage account name
 az login --tenant YOUR_TENANT_ID
 az account set --subscription YOUR_SUBSCRIPTION_ID
 az provider register --namespace Microsoft.Storage --wait
+az provider register --namespace Microsoft.Network --wait
+az provider register --namespace Microsoft.Compute --wait
 cp infra/bootstrap/terraform.tfvars.example infra/bootstrap/terraform.tfvars
 ```
 
@@ -75,6 +80,11 @@ Edit `infra/bootstrap/terraform.tfvars`:
   the GitHub API or the repository's OIDC configuration.
 - `deployment_application_display_name`: optional Entra application display
   name.
+- `virtual_network_address_space`, `runner_subnet_address_prefix`, and
+  `private_endpoint_subnet_address_prefix`: change these if the defaults overlap
+  networks that will be peered later.
+- `runner_vm_name` and `runner_vm_size`: optional runner VM settings. The
+  default `Standard_D2s_v5` provides 2 vCPUs and 8 GiB for Windows and Terraform.
 - `environments`: Fabric workspace keys. The default provisions `developer1`,
   `dev`, `test`, and `prod`.
 - `github_environments`: workspace environments allowed to run CI/CD workflows.
@@ -111,11 +121,46 @@ terraform -chdir=infra/bootstrap output -raw deployment_config \
   > infra/terraform/deployment.auto.tfvars.json
 ```
 
+Bootstrap creates the state container through Azure Resource Manager rather
+than the storage data plane. This allows the initial apply to run from an
+operator workstation even though storage public network access is disabled.
+For an existing bootstrap state, the `removed` block intentionally forgets the
+old AzureRM container resource without deleting the container; AzAPI then
+adopts it through an idempotent ARM PUT.
+
 The generated handoff files, Terraform state, plans, and tfvars are ignored by
 Git. Bootstrap creates environment-scoped OIDC credentials for the configured
 `github_environments`, a main-branch credential for infrastructure deployment,
 and the deployment application's Azure access. GitHub environments themselves
 are configured in the next section; bootstrap does not create them.
+
+The Windows administrator password is generated automatically and retained
+only in the sensitive local bootstrap state. It is not an input or output.
+There is no SSH key, public IP, RDP rule, or other inbound access. Use Azure Run
+Command for management; Azure can reset the administrator password if recovery
+is ever required.
+
+### Register the self-hosted runner
+
+The bootstrap apply waits for the VM extension to install Azure CLI and the
+checksum-verified Windows runner package. Register the prepared VM:
+
+```bash
+infra/bootstrap/register-runner.sh
+```
+
+The registration helper obtains a one-hour, one-time runner token with `gh`,
+sends it through Windows Azure Run Command, starts the runner as a Windows
+service under `NT AUTHORITY\NETWORK SERVICE`, and does not put the token in
+Terraform configuration or state. It is idempotent when the VM is already
+configured. The runner receives the `fabric-infra` label required by the
+infrastructure deployment workflow.
+
+Confirm that the runner is online under **Settings → Actions → Runners** before
+dispatching infrastructure deployment. Repository-level self-hosted runners
+should be used only with trusted workflows. Keep branch protection on `main`;
+pull-request CI continues to use GitHub-hosted runners and cannot target this
+VM.
 
 If resources are already managed by an earlier Terraform state, do not apply
 these configurations as a fresh deployment. Back up the existing states and
@@ -158,8 +203,9 @@ credentials, and never applies Terraform.
 
 Deploy the main Fabric infrastructure only through the `Deploy infrastructure`
 GitHub Actions workflow. Do not run the main Terraform configuration locally.
-The workflow uses the bootstrapped OIDC identity, initializes the remote backend,
-and serializes runs against the shared state.
+The workflow uses the bootstrapped OIDC identity on the `fabric-infra`
+self-hosted runner, verifies that the state hostname resolves to a private IP,
+initializes the remote backend, and serializes runs against the shared state.
 
 1. Open **Actions → Deploy infrastructure → Run workflow** and select the
    `main` branch.

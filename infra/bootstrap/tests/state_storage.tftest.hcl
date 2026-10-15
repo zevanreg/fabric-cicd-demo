@@ -9,6 +9,16 @@ variables {
   github_environments  = ["dev", "test", "prod"]
 }
 
+mock_provider "azapi" {}
+
+mock_provider "random" {
+  mock_resource "random_password" {
+    defaults = {
+      result = "MockRunnerPassword!1234567890AbCd"
+    }
+  }
+}
+
 mock_provider "azuread" {
   mock_resource "azuread_application_registration" {
     defaults = {
@@ -37,6 +47,56 @@ mock_provider "azurerm" {
       id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Storage/storageAccounts/fabricstatetest123"
     }
   }
+
+  mock_resource "azurerm_network_interface" {
+    defaults = {
+      id                 = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/networkInterfaces/vm-fabric-infra-runner-nic"
+      private_ip_address = "10.42.1.4"
+    }
+  }
+
+  mock_resource "azurerm_public_ip" {
+    defaults = {
+      id         = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/publicIPAddresses/vm-fabric-infra-runner-egress-pip"
+      ip_address = "203.0.113.10"
+    }
+  }
+
+  mock_resource "azurerm_nat_gateway" {
+    defaults = {
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/natGateways/vm-fabric-infra-runner-nat"
+    }
+  }
+
+  mock_resource "azurerm_network_security_group" {
+    defaults = {
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/networkSecurityGroups/vm-fabric-infra-runner-nsg"
+    }
+  }
+
+  mock_resource "azurerm_virtual_network" {
+    defaults = {
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/virtualNetworks/vnet-fabric-date-runner"
+    }
+  }
+
+  mock_resource "azurerm_subnet" {
+    defaults = {
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/virtualNetworks/vnet-fabric-date-runner/subnets/mock"
+    }
+  }
+
+  mock_resource "azurerm_private_dns_zone" {
+    defaults = {
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Network/privateDnsZones/privatelink.blob.core.windows.net"
+    }
+  }
+
+  mock_resource "azurerm_windows_virtual_machine" {
+    defaults = {
+      id = "/subscriptions/33333333-3333-4333-8333-333333333333/resourceGroups/rg-fabric-date-tfstate/providers/Microsoft.Compute/virtualMachines/vm-fabric-infra-runner"
+    }
+  }
 }
 
 run "state_storage" {
@@ -44,13 +104,43 @@ run "state_storage" {
 
   assert {
     condition = (
-      azurerm_storage_account.state.public_network_access == "Enabled" &&
+      azurerm_storage_account.state.public_network_access == "Disabled" &&
       azurerm_storage_account.state.shared_access_key_enabled == false &&
       azurerm_storage_account.state.allow_nested_items_to_be_public == false &&
       azurerm_storage_account.state.min_tls_version == "TLS1_2" &&
-      azurerm_storage_container.state.container_access_type == "private"
+      azapi_resource.state_container.name == "tfstate" &&
+      azapi_resource.state_container.body.properties.publicAccess == "None"
     )
-    error_message = "State storage must be reachable by hosted runners, require Entra authentication, disallow public blobs, and enforce TLS 1.2."
+    error_message = "State storage must disable public networking and blob access, require Entra authentication, and enforce TLS 1.2."
+  }
+
+  assert {
+    condition = (
+      contains(azurerm_virtual_network.runner.address_space, "10.42.0.0/16") &&
+      azurerm_subnet.runner.address_prefixes[0] == "10.42.1.0/24" &&
+      azurerm_subnet.private_endpoints.address_prefixes[0] == "10.42.2.0/24" &&
+      azurerm_subnet.private_endpoints.private_endpoint_network_policies == "Disabled" &&
+      azurerm_private_dns_zone.blob.name == "privatelink.blob.core.windows.net" &&
+      azurerm_private_endpoint.state_blob.private_service_connection[0].subresource_names[0] == "blob"
+    )
+    error_message = "The runner and state blob private endpoint must use isolated subnets and private DNS."
+  }
+
+  assert {
+    condition = (
+      azurerm_windows_virtual_machine.runner.name == "vm-fabric-infra-runner" &&
+      azurerm_windows_virtual_machine.runner.computer_name == "fabricrunner" &&
+      azurerm_windows_virtual_machine.runner.admin_password == local.runner_admin_password &&
+      azurerm_windows_virtual_machine.runner.network_interface_ids[0] == azurerm_network_interface.runner.id &&
+      azurerm_network_interface.runner.ip_configuration[0].subnet_id == azurerm_subnet.runner.id &&
+      azurerm_subnet_nat_gateway_association.runner.nat_gateway_id == azurerm_nat_gateway.runner.id &&
+      one(azurerm_network_security_group.runner.security_rule).access == "Deny" &&
+      one(azurerm_network_security_group.runner.security_rule).direction == "Inbound" &&
+      strcontains(local.runner_bootstrap_script, "installazurecliwindowsx64") &&
+      strcontains(local.runner_bootstrap_script, "actions-runner-win-x64-2.338.0.zip") &&
+      azurerm_virtual_machine_extension.runner_bootstrap.virtual_machine_id == azurerm_windows_virtual_machine.runner.id
+    )
+    error_message = "The Windows runner must use a generated password, have no public NIC, deny inbound traffic, use NAT, and install Azure CLI plus the pinned runner."
   }
 
   assert {

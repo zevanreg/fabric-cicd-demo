@@ -2,6 +2,10 @@ terraform {
   required_version = ">= 1.8, < 2.0"
 
   required_providers {
+    azapi = {
+      source  = "Azure/azapi"
+      version = "~> 2.7"
+    }
     azuread = {
       source  = "hashicorp/azuread"
       version = "~> 3.10"
@@ -9,6 +13,10 @@ terraform {
     azurerm = {
       source  = "hashicorp/azurerm"
       version = "~> 5.9"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.7"
     }
   }
 }
@@ -77,7 +85,7 @@ resource "azurerm_storage_account" "state" {
   account_tier                    = "Standard"
   account_replication_type        = "LRS"
   min_tls_version                 = "TLS1_2"
-  public_network_access           = "Enabled"
+  public_network_access           = "Disabled"
   shared_access_key_enabled       = false
   allow_nested_items_to_be_public = false
   tags                            = var.tags
@@ -99,10 +107,26 @@ resource "azurerm_storage_account" "state" {
   }
 }
 
-resource "azurerm_storage_container" "state" {
-  name                  = "tfstate"
-  storage_account_id    = azurerm_storage_account.state.id
-  container_access_type = "private"
+removed {
+  from = azurerm_storage_container.state
+
+  lifecycle {
+    destroy = false
+  }
+}
+
+# The AzureRM container resource uses the storage data plane, which is not
+# reachable until the private runner exists. AzAPI creates it through ARM.
+resource "azapi_resource" "state_container" {
+  type      = "Microsoft.Storage/storageAccounts/blobServices/containers@2024-01-01"
+  name      = "tfstate"
+  parent_id = "${azurerm_storage_account.state.id}/blobServices/default"
+
+  body = {
+    properties = {
+      publicAccess = "None"
+    }
+  }
 
   lifecycle {
     prevent_destroy = true

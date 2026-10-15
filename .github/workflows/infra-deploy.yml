@@ -17,9 +17,10 @@ concurrency:
 defaults:
   run:
     working-directory: infra/terraform
+    shell: powershell
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, windows, x64, fabric-infra]
     timeout-minutes: 90
     env:
       AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
@@ -36,30 +37,46 @@ jobs:
       - name: Require main branch
         if: github.ref != 'refs/heads/main'
         working-directory: .
-        run: |
-          echo "::error::Infrastructure deployment must be dispatched from the main branch."
-          exit 1
+        shell: powershell
+        run: throw "Infrastructure deployment must be dispatched from the main branch."
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
       - name: Validate deployment configuration
-        shell: bash
+        shell: powershell
         run: |
-          set -euo pipefail
-          if [[ -z "$AZURE_CLIENT_ID" ||
-                -z "$AZURE_CLIENT_OBJECT_ID" ||
-                -z "$AZURE_SUBSCRIPTION_ID" ||
-                -z "$AZURE_TENANT_ID" ||
-                -z "$TFSTATE_RESOURCE_GROUP" ||
-                -z "$TFSTATE_STORAGE_ACCOUNT" ||
-                -z "$TF_VAR_capacity_admins" ]]; then
-            echo "::error::Configure all infrastructure deployment variables documented in README.md."
-            exit 1
+          $requiredVariables = @(
+            "AZURE_CLIENT_ID",
+            "AZURE_CLIENT_OBJECT_ID",
+            "AZURE_SUBSCRIPTION_ID",
+            "AZURE_TENANT_ID",
+            "TFSTATE_RESOURCE_GROUP",
+            "TFSTATE_STORAGE_ACCOUNT",
+            "TF_VAR_capacity_admins"
+          )
+          $missingVariables = @(
+            $requiredVariables | Where-Object {
+              [string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($_))
+            }
+          )
+          if ($missingVariables.Count -gt 0) {
+            throw "Configure all infrastructure deployment variables documented in README.md. Missing: $($missingVariables -join ', ')."
           fi
-          if ! jq -e 'type == "array" and length > 0 and all(.[]; type == "string" and length > 0)' \
-            <<< "$TF_VAR_capacity_admins" > /dev/null; then
-            echo "::error::FABRIC_CAPACITY_ADMINS must be a non-empty JSON array of strings."
-            exit 1
+          $capacityAdminJson = $env:TF_VAR_capacity_admins.Trim()
+          if (-not ($capacityAdminJson.StartsWith("[") -and $capacityAdminJson.EndsWith("]"))) {
+            throw "FABRIC_CAPACITY_ADMINS must be a JSON array."
+          }
+          try {
+            $capacityAdmins = @(ConvertFrom-Json -InputObject $capacityAdminJson)
+          }
+          catch {
+            throw "FABRIC_CAPACITY_ADMINS must be valid JSON: $($_.Exception.Message)"
+          }
+          if (
+            $capacityAdmins.Count -eq 0 -or
+            @($capacityAdmins | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) }).Count -gt 0
+          ) {
+            throw "FABRIC_CAPACITY_ADMINS must be a non-empty JSON array of strings."
           fi
       - uses: azure/login@v2
         with:
@@ -69,15 +86,42 @@ jobs:
       - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '1.16.5'
-      - name: Initialize remote state
+      - name: Verify private state endpoint
+        shell: powershell
         run: |
-          terraform init -input=false -lockfile=readonly \
-            -backend-config="resource_group_name=$TFSTATE_RESOURCE_GROUP" \
-            -backend-config="storage_account_name=$TFSTATE_STORAGE_ACCOUNT" \
-            -backend-config="container_name=tfstate" \
-            -backend-config="key=fabric-infrastructure.tfstate" \
-            -backend-config="subscription_id=$AZURE_SUBSCRIPTION_ID" \
-            -backend-config="tenant_id=$AZURE_TENANT_ID"
+          $stateHost = "$env:TFSTATE_STORAGE_ACCOUNT.blob.core.windows.net"
+          $stateAddresses = @(
+            Resolve-DnsName -Name $stateHost -Type A -ErrorAction Stop |
+              Where-Object IPAddress |
+              Select-Object -ExpandProperty IPAddress
+          )
+          if ($stateAddresses.Count -eq 0) {
+            throw "$stateHost did not resolve to an IPv4 address."
+          fi
+          $nonPrivateAddresses = @(
+            $stateAddresses | Where-Object {
+              $octets = ([Net.IPAddress]::Parse($_)).GetAddressBytes()
+              -not (
+                $octets[0] -eq 10 -or
+                ($octets[0] -eq 172 -and $octets[1] -ge 16 -and $octets[1] -le 31) -or
+                ($octets[0] -eq 192 -and $octets[1] -eq 168)
+              )
+            }
+          )
+          if ($nonPrivateAddresses.Count -gt 0) {
+            throw "$stateHost resolved to non-private address(es): $($nonPrivateAddresses -join ', ')."
+          fi
+          Write-Host "$stateHost resolves to private endpoint address(es): $($stateAddresses -join ', ')."
+      - name: Initialize remote state
+        shell: powershell
+        run: |
+          terraform init -input=false -lockfile=readonly `
+            -backend-config="resource_group_name=$env:TFSTATE_RESOURCE_GROUP" `
+            -backend-config="storage_account_name=$env:TFSTATE_STORAGE_ACCOUNT" `
+            -backend-config="container_name=tfstate" `
+            -backend-config="key=fabric-infrastructure.tfstate" `
+            -backend-config="subscription_id=$env:AZURE_SUBSCRIPTION_ID" `
+            -backend-config="tenant_id=$env:AZURE_TENANT_ID"
       - name: Validate configuration
         run: terraform validate
       - name: Create deployment plan
@@ -87,13 +131,19 @@ jobs:
         run: terraform apply -input=false -lock-timeout=5m tfplan
       - name: Publish workspace IDs
         if: inputs.operation == 'apply'
-        shell: bash
+        shell: powershell
         run: |
-          {
-            echo "## Fabric workspace IDs"
-            echo
-            echo "| Environment | Workspace ID |"
-            echo "| --- | --- |"
-            terraform output -json workspace_ids |
-              jq -r 'to_entries[] | "| `\(.key)` | `\(.value)` |"'
-          } >> "$GITHUB_STEP_SUMMARY"
+          $workspaceJson = terraform output -json workspace_ids
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to read Terraform workspace outputs."
+          }
+          $workspaces = $workspaceJson | ConvertFrom-Json
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value @(
+            "## Fabric workspace IDs",
+            "",
+            "| Environment | Workspace ID |",
+            "| --- | --- |"
+          )
+          foreach ($workspace in ($workspaces.PSObject.Properties | Sort-Object Name)) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ('| `{0}` | `{1}` |' -f $workspace.Name, $workspace.Value)
+          }

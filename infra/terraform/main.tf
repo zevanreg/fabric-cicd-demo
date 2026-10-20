@@ -60,5 +60,5 @@ resource "fabric_workspace_role_assignment" "workspace_access" {
 
   workspace_id = fabric_workspace.this[each.value.environment].id
   principal    = each.value.principal
-  role         = contains(["developer1", "dev"], each.value.environment) ? "Admin" : "Viewer"
+  role         = contains(["developer1", "dev"], each.value.environment) ? "Admin" : "Admin"
 }
